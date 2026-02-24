@@ -1,32 +1,34 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { TrainingSessionConfig } from '../types';
 import { readFileAsText } from '../utils/pdf';
-
+ 
 interface SetupFormProps {
   onStart: (config: TrainingSessionConfig) => void;
 }
-
-const PRESET_FILES = [
-  { name: 'Customer Service Policy.txt', content: 'Our policy is to always listen to the customer first. We provide refunds within 30 days. We never argue with customers.' },
-  { name: 'Technical Sales Guide.txt', content: 'The Gemini Live API is a low-latency multimodal tool. It supports PCM 16kHz audio input and 24kHz audio output. It is best used for real-time interaction.' },
-  { name: 'Interview Question Bank.txt', content: 'Standard questions: Tell me about yourself. Why do you want this job? What is your greatest weakness? Where do you see yourself in 5 years?' }
-];
-
+ 
+const presetModules = import.meta.glob('../docs/*.txt', { as: 'raw', eager: true });
+ 
 const SetupForm: React.FC<SetupFormProps> = ({ onStart }) => {
   const [role, setRole] = useState('A customer with age 25 and monthly income of 50000 Rupees. He will ask questions about our product and services and we have to answer him in a way that he will buy our product.');
   const [file, setFile] = useState<File | null>(null);
   const [selectedPreset, setSelectedPreset] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [micPermission, setMicPermission] = useState<'prompt' | 'granted' | 'denied'>('prompt');
-
+ 
+  const presetFiles = useMemo(() => {
+    return Object.entries(presetModules).map(([path, content]) => {
+      const name = path.split('/').pop() || 'Unknown.txt';
+      return { name, content: content as string };
+    });
+  }, []);
+ 
   useEffect(() => {
     navigator.permissions.query({ name: 'microphone' as any }).then(result => {
       setMicPermission(result.state as any);
       result.onchange = () => setMicPermission(result.state as any);
     });
   }, []);
-
+ 
   const requestMic = async () => {
     try {
       await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -35,7 +37,7 @@ const SetupForm: React.FC<SetupFormProps> = ({ onStart }) => {
       setMicPermission('denied');
     }
   };
-
+ 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -43,17 +45,17 @@ const SetupForm: React.FC<SetupFormProps> = ({ onStart }) => {
       alert('Please enable microphone access to start the session.');
       return;
     }
-
+ 
     setLoading(true);
     try {
       let text = '';
       let fileName = '';
-
+ 
       if (file) {
         text = await readFileAsText(file);
         fileName = file.name;
       } else if (selectedPreset) {
-        const preset = PRESET_FILES.find(p => p.name === selectedPreset);
+        const preset = presetFiles.find(p => p.name === selectedPreset);
         text = preset?.content || '';
         fileName = preset?.name || '';
       } else {
@@ -61,7 +63,7 @@ const SetupForm: React.FC<SetupFormProps> = ({ onStart }) => {
         setLoading(false);
         return;
       }
-
+ 
       onStart({
         role,
         contextText: text,
@@ -74,7 +76,7 @@ const SetupForm: React.FC<SetupFormProps> = ({ onStart }) => {
       setLoading(false);
     }
   };
-
+ 
   return (
     <div className="max-w-2xl mx-auto p-8 bg-white rounded-3xl shadow-xl border border-slate-100">
       <div className="flex items-center gap-4 mb-8">
@@ -104,11 +106,16 @@ const SetupForm: React.FC<SetupFormProps> = ({ onStart }) => {
             <p className="mt-2 text-xs text-slate-400">The AI will strictly inhabit this character throughout the conversation.</p>
           </div>
         </div>
-
+ 
         <div className="space-y-4">
           <label className="block text-sm font-bold text-slate-700 uppercase tracking-wider">Document Library</label>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {PRESET_FILES.map(p => (
+            {presetFiles.length === 0 ? (
+              <div className="col-span-1 md:col-span-2 text-sm text-slate-500 bg-slate-50 border border-slate-100 rounded-2xl p-4">
+                No preset documents found. Add .txt files to the docs folder to populate this list.
+              </div>
+            ) : null}
+            {presetFiles.map(p => (
               <button
                 key={p.name}
                 type="button"
@@ -144,7 +151,7 @@ const SetupForm: React.FC<SetupFormProps> = ({ onStart }) => {
             </div>
           </div>
         </div>
-
+ 
         <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className={`w-3 h-3 rounded-full ${micPermission === 'granted' ? 'bg-green-500' : 'bg-red-400 animate-pulse'}`}></div>
@@ -162,7 +169,7 @@ const SetupForm: React.FC<SetupFormProps> = ({ onStart }) => {
             <span className="text-xs text-green-600 font-bold uppercase">Ready</span>
           )}
         </div>
-
+ 
         <button
           type="submit"
           disabled={loading || micPermission !== 'granted'}
@@ -186,5 +193,5 @@ const SetupForm: React.FC<SetupFormProps> = ({ onStart }) => {
     </div>
   );
 };
-
+ 
 export default SetupForm;
