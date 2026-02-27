@@ -9,7 +9,7 @@ interface SetupFormProps {
 const presetModules = import.meta.glob('../docs/*.txt', { as: 'raw', eager: true });
  
 const SetupForm: React.FC<SetupFormProps> = ({ onStart }) => {
-  const [role, setRole] = useState('A customer with age 25 and monthly income of 50000 Rupees. He will ask questions about our product and services and we have to answer him in a way that he will buy our product.');
+  const [role, setRole] = useState('');
   const [file, setFile] = useState<File | null>(null);
   const [selectedPreset, setSelectedPreset] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -50,25 +50,39 @@ const SetupForm: React.FC<SetupFormProps> = ({ onStart }) => {
     try {
       let text = '';
       let fileName = '';
- 
+
       if (file) {
         text = await readFileAsText(file);
         fileName = file.name;
-      } else if (selectedPreset) {
-        const preset = presetFiles.find(p => p.name === selectedPreset);
-        text = preset?.content || '';
-        fileName = preset?.name || '';
       } else {
-        alert('Please upload a file or select a preset document.');
-        setLoading(false);
-        return;
+        // If no file uploaded, use selected preset or default to first preset
+        let preset = null;
+
+        if (selectedPreset) {
+          preset = presetFiles.find(p => p.name === selectedPreset);
+        }
+
+        // If no preset selected, use first document as default
+        if (!preset && presetFiles.length > 0) {
+          preset = presetFiles[0];
+        }
+
+        if (!preset) {
+          alert('No documents available.');
+          setLoading(false);
+          return;
+        }
+
+        text = preset.content || '';
+        fileName = preset.name || '';
       }
- 
+
       onStart({
         role,
         contextText: text,
         fileName: fileName
       });
+
     } catch (err) {
       console.error(err);
       alert('Failed to process context. Please try again.');
@@ -108,26 +122,23 @@ const SetupForm: React.FC<SetupFormProps> = ({ onStart }) => {
         </div>
  
         <div className="space-y-4">
-          <label className="block text-sm font-bold text-slate-700 uppercase tracking-wider">Document Library</label>
+          <label className="block text-sm font-bold text-slate-700 uppercase tracking-wider">Document Upload</label>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {presetFiles.length === 0 ? (
               <div className="col-span-1 md:col-span-2 text-sm text-slate-500 bg-slate-50 border border-slate-100 rounded-2xl p-4">
                 Add txt file here.
               </div>
             ) : null}
-            {presetFiles.map(p => (
-              <button
-                key={p.name}
-                type="button"
-                onClick={() => { setSelectedPreset(p.name); setFile(null); }}
-                className={`text-left p-4 rounded-2xl border-2 transition-all group ${
-                  selectedPreset === p.name ? 'border-indigo-500 bg-indigo-50' : 'border-slate-100 hover:border-indigo-200'
-                }`}
-              >
-                <div className="font-bold text-slate-800 text-sm mb-1 group-hover:text-indigo-600">{p.name}</div>
-                <div className="text-xs text-slate-500 truncate">{p.content}</div>
-              </button>
-            ))}
+            {file && (
+              <div className="text-left p-4 rounded-2xl border-2 border-indigo-500 bg-indigo-50">
+                <div className="font-bold text-slate-800 text-sm mb-1">
+                  {file.name}
+                </div>
+                <div className="text-xs text-slate-500">
+                  File uploaded successfully
+                </div>
+              </div>
+            )}
             
             <div className="relative col-span-1 md:col-span-2">
               <input
