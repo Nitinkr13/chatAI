@@ -100,7 +100,7 @@ const SetupForm: React.FC<SetupFormProps> = ({ onStart }) => {
               value={role}
               onChange={(e) => setRole(e.target.value)}
               className="w-full px-5 py-4 rounded-2xl border-2 border-slate-100 focus:border-indigo-500 focus:ring-0 outline-none transition-all text-lg font-medium"
-              placeholder="e.g. A difficult hiring manager"
+              placeholder="Add Customer Profile."
               required
             />
             <p className="mt-2 text-xs text-slate-400">The AI will strictly inhabit this character throughout the conversation.</p>
@@ -112,7 +112,7 @@ const SetupForm: React.FC<SetupFormProps> = ({ onStart }) => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {presetFiles.length === 0 ? (
               <div className="col-span-1 md:col-span-2 text-sm text-slate-500 bg-slate-50 border border-slate-100 rounded-2xl p-4">
-                No preset documents found. Add .txt files to the docs folder to populate this list.
+                Add txt file here.
               </div>
             ) : null}
             {presetFiles.map(p => (
@@ -145,7 +145,7 @@ const SetupForm: React.FC<SetupFormProps> = ({ onStart }) => {
                   </svg>
                 </div>
                 <span className="text-sm font-medium text-slate-600">
-                  {file ? file.name : "Upload Custom PDF/Text"}
+                  {file ? file.name : "Upload Product Text File"}
                 </span>
               </div>
             </div>
