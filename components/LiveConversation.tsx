@@ -15,6 +15,7 @@ const LiveConversation: React.FC<LiveConversationProps> = ({ config, onEnd }) =>
   const [activeUserText, setActiveUserText] = useState('');
   const [activeModelText, setActiveModelText] = useState('');
   const [isModelSpeaking, setIsModelSpeaking] = useState(false);
+  const [isMicOn, setIsMicOn] = useState(true);
   
   const audioContextInRef = useRef<AudioContext | null>(null);
   const audioContextOutRef = useRef<AudioContext | null>(null);
@@ -30,6 +31,7 @@ const LiveConversation: React.FC<LiveConversationProps> = ({ config, onEnd }) =>
   const lastCommittedInputRef = useRef('');
   const lastCommittedOutputRef = useRef('');
   const sessionTokenRef = useRef(0);
+  const isMicOnRef = useRef(true);
 
   const mergeTranscript = useCallback((current: string, incoming: string) => {
     if (!incoming) return current;
@@ -42,7 +44,23 @@ const LiveConversation: React.FC<LiveConversationProps> = ({ config, onEnd }) =>
     audioContextInRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
     audioContextOutRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
     streamRef.current = await navigator.mediaDevices.getUserMedia({ audio: true });
+    streamRef.current.getAudioTracks().forEach(track => {
+      track.enabled = isMicOnRef.current;
+    });
   };
+
+  const toggleMic = useCallback(() => {
+    setIsMicOn(prev => {
+      const next = !prev;
+      isMicOnRef.current = next;
+      if (streamRef.current) {
+        streamRef.current.getAudioTracks().forEach(track => {
+          track.enabled = next;
+        });
+      }
+      return next;
+    });
+  }, []);
 
   const stopSession = useCallback(() => {
     sessionTokenRef.current += 1;
@@ -79,7 +97,7 @@ const LiveConversation: React.FC<LiveConversationProps> = ({ config, onEnd }) =>
     
     // STRONGER CHARACTER ENFORCEMENT
     const systemInstruction = `
-      CRITICAL: You are NOT an AI assistant. You are strictly inhabiting the character: ${config.role}.
+      CRITICAL: You are NOT an AI assistant. You are strictly inhabiting the character of a customer looking to buy a insurance policy, : ${config.role}.
       STAY IN CHARACTER AT ALL TIMES. Use the persona's vocabulary, attitude, and tone.
       
       Your goal is to interact with the user based on this document context:
@@ -103,6 +121,10 @@ const LiveConversation: React.FC<LiveConversationProps> = ({ config, onEnd }) =>
           const scriptProcessor = audioContextInRef.current!.createScriptProcessor(4096, 1, 1);
           
           scriptProcessor.onaudioprocess = (e) => {
+            if (!isMicOnRef.current) {
+              return;
+            }
+
             const inputData = e.inputBuffer.getChannelData(0);
             const l = inputData.length;
             const int16 = new Int16Array(l);
@@ -250,12 +272,24 @@ const LiveConversation: React.FC<LiveConversationProps> = ({ config, onEnd }) =>
             <p className="text-xs text-slate-400 font-medium tracking-wide uppercase">Active Session</p>
           </div>
         </div>
-        <button 
-          onClick={() => onEnd(transcriptionRef.current)}
-          className="bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white px-5 py-2.5 rounded-xl text-sm font-bold transition-all border border-red-500/20"
-        >
-          End Session
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={toggleMic}
+            className={`px-4 py-2.5 rounded-xl text-sm font-bold transition-all border ${
+              isMicOn
+                ? 'bg-emerald-500/10 hover:bg-emerald-500 text-emerald-400 hover:text-white border-emerald-500/20'
+                : 'bg-amber-500/10 hover:bg-amber-500 text-amber-400 hover:text-white border-amber-500/20'
+            }`}
+          >
+            {isMicOn ? 'Mic On' : 'Mic Off'}
+          </button>
+          <button
+            onClick={() => onEnd(transcriptionRef.current)}
+            className="bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white px-5 py-2.5 rounded-xl text-sm font-bold transition-all border border-red-500/20"
+          >
+            End Session
+          </button>
+        </div>
       </div>
 
       <div ref={scrollRef} className="flex-1 overflow-y-auto p-6 space-y-6 bg-slate-50/50 scroll-smooth">

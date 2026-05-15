@@ -27,6 +27,7 @@ const EvaluationView: React.FC<EvaluationViewProps> = ({ history, config, onRese
         Evaluate the training session performance of the User.
         The User interacted with an AI acting as: ${config.role}
         Reference context provided: ${config.fileName}
+        (It was a voice interaction, and you are evaluating the User's performance based on the conversation history below.z)
         
         Conversation History:
         ${history.map(m => `${m.speaker}: ${m.text}`).join('\n')}
